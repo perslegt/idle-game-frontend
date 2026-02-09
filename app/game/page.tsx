@@ -1,11 +1,20 @@
 'use client';
 
 import { useState } from "react";
+import GameHeader from "./_components/GameHeader";
 
 export default function GamePage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<any>(null);
+
+    const state = data?.state;
+    const resources = state?.resources;
+    const tick = data?.tick;
+
+    function shortId(id?: string) {
+        return id ? `${id.slice(0, 8)}…` : '';
+    }
     
     async function refresh() {
         setLoading(true);
@@ -13,9 +22,9 @@ export default function GamePage() {
         try {
             const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
             if (!baseUrl) throw new Error('NEXT_PUBLIC_API_BASE_URL is not defined');
-            const playerId = '98f8861c-1888-4ca8-aea2-6534be036743';
+            const cityId = '5ad357d7-1f9f-49f9-8e42-1f9b4834dcaa';
 
-            const response = await fetch(`${baseUrl}/state?playerId=${encodeURIComponent(playerId)}`, { method: 'GET' });
+            const response = await fetch(`${baseUrl}/state?cityId=${encodeURIComponent(cityId)}`, { method: 'GET' });
 
             if (!response.ok) {
                 const text = await response.text().catch(() => 'No response body');
@@ -41,9 +50,16 @@ export default function GamePage() {
                 </button>
             </div>
 
+            <GameHeader
+                playerId={data?.playerId}
+                cityId={data?.cityId}
+                serverTime={data?.serverTime}
+                resources={data?.state?.resources}
+            />
+
             {error && (
                 <p style={{ marginTop: 12 }}>
-                <strong>Error:</strong> {error}
+                    <strong>Error:</strong> {error}
                 </p>
             )}
 
