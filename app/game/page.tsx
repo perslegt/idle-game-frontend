@@ -40,6 +40,34 @@ export default function GamePage() {
         }
     }
 
+    async function upgradeBuilding(buildingCode: string) {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+            if (!baseUrl) throw new Error('NEXT_PUBLIC_API_BASE_URL is not defined');
+            const cityId = data?.cityId;
+            if (!cityId) throw new Error('City ID is not available in the current state');
+
+            const response = await fetch(`${baseUrl}/cities/${cityId}/buildings/${buildingCode}/upgrade`, { method: 'POST' });
+
+            if (!response.ok) {
+                const text = await response.text().catch(() => 'No response body');
+                throw new Error(`API error: ${response.status} ${response.statusText} - ${text}`);
+            }
+
+            const result = await response.json();
+            setData(result);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const buildings = data?.state?.buildings ?? [];
+
     return (
         <main style={{ padding: 16 }}>
             <h1 style={{ fontSize: 20, fontWeight: 700 }}>Game</h1>
@@ -56,6 +84,32 @@ export default function GamePage() {
                 serverTime={data?.serverTime}
                 resources={data?.state?.resources}
             />
+
+            <div style={{ marginTop: 12, padding: 12, border: '1px solid #222' }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700 }}>Buildings</h2>
+
+            {buildings.length ? (
+                <ul style={{ marginTop: 8 }}>
+                {buildings.map((b: any, idx: number) => {
+                    const code = b?.buildingType?.code;
+                    return (
+                    <li key={`${code ?? 'building'}-${idx}`} style={{ marginTop: 6 }}>
+                        {code} — lvl {b?.level} — produces {b?.buildingType?.productionResource ?? '-'}
+                        <button
+                        onClick={() => upgradeBuilding(code)}
+                        disabled={loading || !code}
+                        style={{ marginLeft: 8 }}
+                        >
+                        Upgrade
+                        </button>
+                    </li>
+                    );
+                })}
+                </ul>
+            ) : (
+                <p style={{ marginTop: 8 }}>Geen buildings geladen. Klik eerst op Refresh state.</p>
+            )}
+            </div>
 
             {error && (
                 <p style={{ marginTop: 12 }}>
