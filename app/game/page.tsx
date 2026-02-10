@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GameHeader from "./_components/GameHeader";
 
 export default function GamePage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<any>(null);
+    const [displayResources, setDisplayResources] = useState<Record<string, number> | null>(null);
+    const [snapshotResources, setSnapshotResources] = useState<Record<string, number> | null>(null);
+    const [snapshotRates, setSnapshotRates] = useState<Record<string, number> | null>(null);
+    const [snapshotReceivedAtMs, setSnapshotReceivedAtMs] = useState<number | null>(null);
+
 
     const state = data?.state;
     const resources = state?.resources;
@@ -66,6 +71,46 @@ export default function GamePage() {
         }
     }
 
+    useEffect(() => {
+        if (!data?.cityId) return;
+        const interval = setInterval(() => {
+            refresh();
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [data?.cityId]);
+
+    useEffect(() => {
+        const r = data?.state?.resources;
+        const rates = data?.ratesPerSecond;
+
+        if (!r || !rates) return;
+
+        setSnapshotResources(r);
+        setSnapshotRates(rates);
+        setSnapshotReceivedAtMs(Date.now());
+
+        // direct ook display zetten (zodat header meteen klopt)
+        setDisplayResources(r);
+    }, [data]);
+
+    useEffect(() => {
+        if (!snapshotResources || !snapshotRates || !snapshotReceivedAtMs) return;
+
+        const interval = setInterval(() => {
+            const elapsedSeconds = (Date.now() - snapshotReceivedAtMs) / 1000;
+            const next: Record<string, number> = { ...snapshotResources };
+
+            for (const key of Object.keys(next)) {
+                const base = snapshotResources[key] ?? 0;
+                const rate = snapshotRates[key] ?? 0;
+                next[key] = Math.floor(base + rate * elapsedSeconds);
+            }
+            setDisplayResources(next);
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }), [snapshotResources, snapshotRates, snapshotReceivedAtMs];
+
     const buildings = data?.state?.buildings ?? [];
 
     return (
@@ -82,7 +127,7 @@ export default function GamePage() {
                 playerId={data?.playerId}
                 cityId={data?.cityId}
                 serverTime={data?.serverTime}
-                resources={data?.state?.resources}
+                resources={displayResources ?? data?.state?.resources}
             />
 
             <div style={{ marginTop: 12, padding: 12, border: '1px solid #222' }}>
